@@ -7,3 +7,6 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+# Temporary IAM setup files
+github-actions-trust-policy.json
+github-actions-deploy-policy.json

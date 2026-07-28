@@ -1,0 +1,84 @@
+{
+    "containerDefinitions":  [
+                                 {
+                                     "name":  "enterprise-support-container",
+                                     "image":  "307946638889.dkr.ecr.eu-west-1.amazonaws.com/enterprise-support-copilot:latest",
+                                     "cpu":  0,
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  8000,
+                                                              "hostPort":  8000,
+                                                              "protocol":  "tcp",
+                                                              "name":  "enterprise-support-container-8000-tcp",
+                                                              "appProtocol":  "http"
+                                                          }
+                                                      ],
+                                     "essential":  true,
+                                     "environment":  [
+                                                         {
+                                                             "value":  "enterprise-support-copilot-data",
+                                                             "name":  "S3_BUCKET_NAME"
+                                                         },
+                                                         {
+                                                             "value":  "20NXSZ5UAO",
+                                                             "name":  "BEDROCK_KNOWLEDGE_BASE_ID"
+                                                         },
+                                                         {
+                                                             "value":  "eu-west-3",
+                                                             "name":  "AWS_REGION"
+                                                         },
+                                                         {
+                                                             "value":  "eu-west-1",
+                                                             "name":  "BEDROCK_KNOWLEDGE_BASE_REGION"
+                                                         }
+                                                     ],
+                                     "environmentFiles":  [
+
+                                                          ],
+                                     "mountPoints":  [
+
+                                                     ],
+                                     "volumesFrom":  [
+
+                                                     ],
+                                     "ulimits":  [
+
+                                                 ],
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-group":  "/ecs/enterprise-support-task",
+                                                                              "awslogs-create-group":  "true",
+                                                                              "awslogs-region":  "eu-west-1",
+                                                                              "awslogs-stream-prefix":  "ecs"
+                                                                          },
+                                                              "secretOptions":  [
+
+                                                                                ]
+                                                          },
+                                     "systemControls":  [
+
+                                                        ]
+                                 }
+                             ],
+    "family":  "enterprise-support-task",
+    "taskRoleArn":  "arn:aws:iam::307946638889:role/enterprise-support-task-role-v2",
+    "executionRoleArn":  "arn:aws:iam::307946638889:role/ecsTaskExecutionRole",
+    "networkMode":  "awsvpc",
+    "volumes":  [
+
+                ],
+    "placementConstraints":  [
+
+                             ],
+    "runtimePlatform":  {
+                            "cpuArchitecture":  "X86_64",
+                            "operatingSystemFamily":  "LINUX"
+                        },
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "cpu":  "512",
+    "memory":  "1024",
+    "enableFaultInjection":  false
+}
