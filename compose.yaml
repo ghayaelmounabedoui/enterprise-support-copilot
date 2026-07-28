@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: enterprise-support-copilot-api
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    environment:
+      AWS_SHARED_CREDENTIALS_FILE: /home/appuser/.aws/credentials
+      AWS_CONFIG_FILE: /home/appuser/.aws/config
+
+    volumes:
+      - ${USERPROFILE}/.aws:/home/appuser/.aws:ro
+
+    restart: unless-stopped

@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Enterprise Support Copilot"
     aws_region: str = "us-east-1"
-    bedrock_model_id: str = "amazon.nova-lite-v1:0"
+    bedrock_model_id: str = "eu.amazon.nova-lite-v1:0"
 
     model_config = SettingsConfigDict(
         env_file=".env",

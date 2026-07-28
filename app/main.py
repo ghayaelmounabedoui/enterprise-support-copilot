@@ -26,3 +26,11 @@ app.include_router(refunds_router)
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
     return {"status": "healthy"}
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "message": "Enterprise Support Copilot API is running.",
+        "docs": "/docs",
+    }

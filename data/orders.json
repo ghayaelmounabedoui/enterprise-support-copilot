@@ -1,0 +1,42 @@
+[
+  {
+    "order_id": "ORD-84721",
+    "customer_id": "CUST-1001",
+    "product": "Laptop Pro 15",
+    "status": "delayed",
+    "order_date": "2026-07-18",
+    "expected_delivery": "2026-07-24",
+    "amount": 1299.0,
+    "currency": "EUR"
+  },
+  {
+    "order_id": "ORD-84722",
+    "customer_id": "CUST-1002",
+    "product": "Wireless Headphones",
+    "status": "delivered",
+    "order_date": "2026-07-15",
+    "expected_delivery": "2026-07-20",
+    "amount": 149.0,
+    "currency": "EUR"
+  },
+  {
+    "order_id": "ORD-84723",
+    "customer_id": "CUST-1001",
+    "product": "Mechanical Keyboard",
+    "status": "shipped",
+    "order_date": "2026-07-21",
+    "expected_delivery": "2026-07-27",
+    "amount": 99.0,
+    "currency": "EUR"
+  },
+  {
+    "order_id": "ORD-84724",
+    "customer_id": "CUST-1003",
+    "product": "4K Monitor",
+    "status": "processing",
+    "order_date": "2026-07-23",
+    "expected_delivery": "2026-07-29",
+    "amount": 429.0,
+    "currency": "EUR"
+  }
+]

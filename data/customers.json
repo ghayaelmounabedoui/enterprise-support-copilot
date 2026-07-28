@@ -1,0 +1,23 @@
+[
+  {
+    "customer_id": "CUST-1001",
+    "name": "Emma Laurent",
+    "email": "emma.laurent@example.com",
+    "tier": "premium",
+    "country": "France"
+  },
+  {
+    "customer_id": "CUST-1002",
+    "name": "Lucas Martin",
+    "email": "lucas.martin@example.com",
+    "tier": "standard",
+    "country": "Belgium"
+  },
+  {
+    "customer_id": "CUST-1003",
+    "name": "Sofia Rossi",
+    "email": "sofia.rossi@example.com",
+    "tier": "premium",
+    "country": "Italy"
+  }
+]

@@ -1,11 +1,15 @@
 from typing import Any
 import re
+
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from app.services.refund_service import check_refund_eligibility
+
 from app.core.config import get_settings
-from app.services.order_service import get_order
 from app.services.customer_service import get_customer
+from app.services.knowledge_base_service import search_knowledge_base
+from app.services.order_service import get_order
+from app.services.refund_service import check_refund_eligibility
+
 
 class BedrockService:
     def __init__(self) -> None:
@@ -19,26 +23,120 @@ class BedrockService:
         )
 
         self.system_prompt = [
-    {
-        "text": (
-            "You are an enterprise customer support assistant. "
-            "Use get_order when the user asks only about an order. "
-            "Use get_customer when the user asks directly about a customer. "
-            "Use get_order_with_customer when the user asks who is associated "
-            "with an order or requests both order and customer information. "
-            "Never invent company data. "
-            "Only use information returned by the tools."
-            "Use check_refund_eligibility whenever the user asks whether "
-            "an order can be refunded or returned. "
-            "Never decide refund eligibility yourself. "
-            "Always use the business tool for refund decisions. "
-        )
-    }
-]
-        
+            {
+                "text": (
+                    "You are an enterprise customer support assistant. "
+                    "Use company tools whenever the user requests company-specific "
+                    "information. "
+                    "\n\n"
+                    "Tool selection rules:\n"
+                    "- Use get_order when the user asks about a specific order.\n"
+                    "- Use get_customer when the user asks directly about a specific "
+                    "customer.\n"
+                    "- Use get_order_with_customer when the user asks who is associated "
+                    "with an order, or requests both order and customer information.\n"
+                    "- Use check_refund_eligibility when the user asks whether a specific "
+                    "order can be refunded or returned.\n"
+                    "- Use search_knowledge_base for general questions about refund "
+                    "policies, warranty policies, shipping rules, return conditions, "
+                    "support FAQs, or company documentation.\n"
+                    "\n"
+                    "Examples:\n"
+                    "- 'What is the refund policy?' -> search_knowledge_base.\n"
+                    "- 'How long does a refund take?' -> search_knowledge_base.\n"
+                    "- 'Can order ORD-84721 be refunded?' "
+                    "-> check_refund_eligibility.\n"
+                    "- 'What is the status of ORD-84721?' -> get_order.\n"
+                    "- 'Who is associated with ORD-84721?' "
+                    "-> get_order_with_customer.\n"
+                    "\n"
+                    "Never invent company policies, orders, customers, refund decisions, "
+                    "or other company data. "
+                    "Only use information returned by the tools. "
+                    "When knowledge-base sources are available, briefly mention the "
+                    "document name. "
+                    "Return only the final answer to the user. "
+                    "Never expose internal reasoning, analysis, or thinking tags."
+                )
+            }
+        ]
+
         self.tool_config = {
             "tools": [
-                    {
+                {
+                    "toolSpec": {
+                        "name": "get_order",
+                        "description": (
+                            "Retrieve information about a specific order from "
+                            "the company system."
+                        ),
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "order_id": {
+                                        "type": "string",
+                                        "description": (
+                                            "The exact order identifier, "
+                                            "for example ORD-84721."
+                                        ),
+                                    }
+                                },
+                                "required": ["order_id"],
+                            }
+                        },
+                    }
+                },
+                {
+                    "toolSpec": {
+                        "name": "get_customer",
+                        "description": (
+                            "Retrieve information about a specific customer "
+                            "from the company system."
+                        ),
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "customer_id": {
+                                        "type": "string",
+                                        "description": (
+                                            "The exact customer identifier, "
+                                            "for example CUST-1001."
+                                        ),
+                                    }
+                                },
+                                "required": ["customer_id"],
+                            }
+                        },
+                    }
+                },
+                {
+                    "toolSpec": {
+                        "name": "get_order_with_customer",
+                        "description": (
+                            "Retrieve an order and the customer associated with it. "
+                            "Use this tool when the user asks who owns an order or "
+                            "requests both order and customer details."
+                        ),
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "order_id": {
+                                        "type": "string",
+                                        "description": (
+                                            "The exact order identifier, "
+                                            "for example ORD-84721."
+                                        ),
+                                    }
+                                },
+                                "required": ["order_id"],
+                            }
+                        },
+                    }
+                },
+                {
                     "toolSpec": {
                         "name": "check_refund_eligibility",
                         "description": (
@@ -63,7 +161,33 @@ class BedrockService:
                             }
                         },
                     }
-                }
+                },
+                {
+                    "toolSpec": {
+                        "name": "search_knowledge_base",
+                        "description": (
+                            "Search the company knowledge base for refund policies, "
+                            "warranty policies, shipping rules, return conditions, "
+                            "support FAQs, and other company documentation. "
+                            "Use this tool for general policy questions."
+                        ),
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": (
+                                            "The complete user question to search "
+                                            "in the company knowledge base."
+                                        ),
+                                    }
+                                },
+                                "required": ["query"],
+                            }
+                        },
+                    }
+                },
             ]
         }
 
@@ -89,7 +213,7 @@ class BedrockService:
         tool_input: dict[str, Any],
     ) -> dict[str, Any]:
         if tool_name == "get_order":
-            order_id = tool_input.get("order_id")
+            order_id = str(tool_input.get("order_id", "")).strip()
 
             if not order_id:
                 return {
@@ -113,8 +237,37 @@ class BedrockService:
                 "found": True,
                 "order": order,
             }
+
+        if tool_name == "get_customer":
+            customer_id = str(
+                tool_input.get("customer_id", "")
+            ).strip()
+
+            if not customer_id:
+                return {
+                    "found": False,
+                    "error": "The customer_id parameter is required.",
+                }
+
+            customer = get_customer(customer_id)
+
+            if customer is None:
+                return {
+                    "found": False,
+                    "customer_id": customer_id,
+                    "message": (
+                        f"Customer {customer_id} was not found "
+                        "in the company database."
+                    ),
+                }
+
+            return {
+                "found": True,
+                "customer": customer,
+            }
+
         if tool_name == "get_order_with_customer":
-            order_id = tool_input.get("order_id")
+            order_id = str(tool_input.get("order_id", "")).strip()
 
             if not order_id:
                 return {
@@ -135,15 +288,20 @@ class BedrockService:
                 }
 
             customer_id = order.get("customer_id")
-            customer = get_customer(customer_id) if customer_id else None
+            customer = (
+                get_customer(customer_id)
+                if customer_id
+                else None
+            )
 
             return {
                 "found": True,
                 "order": order,
                 "customer": customer,
             }
+
         if tool_name == "check_refund_eligibility":
-            order_id = tool_input.get("order_id")
+            order_id = str(tool_input.get("order_id", "")).strip()
 
             if not order_id:
                 return {
@@ -153,10 +311,51 @@ class BedrockService:
                 }
 
             return check_refund_eligibility(order_id)
+
+        if tool_name == "search_knowledge_base":
+            query = str(tool_input.get("query", "")).strip()
+
+            if not query:
+                return {
+                    "found": False,
+                    "results": [],
+                    "error": "The query parameter is required.",
+                }
+
+            knowledge_result = search_knowledge_base(
+                query=query,
+                number_of_results=3,
+            )
+
+            return {
+                "found": knowledge_result.get("found", False),
+                "query": knowledge_result.get("query", query),
+                "results": [
+                    {
+                        "text": item.get("text", ""),
+                        "source": item.get("source"),
+                        "score": item.get("score"),
+                        "document": self._extract_document_name(
+                            item.get("source")
+                        ),
+                    }
+                    for item in knowledge_result.get("results", [])
+                ],
+            }
+
         return {
             "found": False,
             "error": f"Unknown tool: {tool_name}",
         }
+
+    @staticmethod
+    def _extract_document_name(
+        source: str | None,
+    ) -> str | None:
+        if not source:
+            return None
+
+        return source.rstrip("/").split("/")[-1]
 
     @staticmethod
     def _extract_text(
@@ -168,7 +367,6 @@ class BedrockService:
             if "text" in block
         )
 
-        # Supprime les blocs <thinking>...</thinking>
         text = re.sub(
             r"<thinking>.*?</thinking>",
             "",
@@ -177,6 +375,7 @@ class BedrockService:
         )
 
         return text.strip()
+
     @staticmethod
     def _extract_metrics(
         response: dict[str, Any],
@@ -191,10 +390,15 @@ class BedrockService:
         )
 
     def chat(self, message: str) -> dict[str, Any]:
+        cleaned_message = message.strip()
+
+        if not cleaned_message:
+            raise ValueError("The message cannot be empty.")
+
         messages: list[dict[str, Any]] = [
             {
                 "role": "user",
-                "content": [{"text": message}],
+                "content": [{"text": cleaned_message}],
             }
         ]
 
@@ -219,10 +423,18 @@ class BedrockService:
                 messages.append(assistant_message)
 
                 if response.get("stopReason") != "tool_use":
+                    answer = self._extract_text(
+                        assistant_message.get("content", [])
+                    )
+
+                    if not answer:
+                        answer = (
+                            "I could not generate a valid response. "
+                            "Please try again."
+                        )
+
                     return {
-                        "answer": self._extract_text(
-                            assistant_message["content"]
-                        ),
+                        "answer": answer,
                         "input_tokens": total_input_tokens,
                         "output_tokens": total_output_tokens,
                         "latency_ms": total_latency_ms,
@@ -230,7 +442,10 @@ class BedrockService:
 
                 tool_results: list[dict[str, Any]] = []
 
-                for content_block in assistant_message["content"]:
+                for content_block in assistant_message.get(
+                    "content",
+                    [],
+                ):
                     tool_use = content_block.get("toolUse")
 
                     if tool_use is None:
@@ -252,7 +467,7 @@ class BedrockService:
                                 "content": [{"json": result}],
                                 "status": (
                                     "error"
-                                    if "error" in result
+                                    if result.get("error")
                                     else "success"
                                 ),
                             }
@@ -261,8 +476,8 @@ class BedrockService:
 
                 if not tool_results:
                     raise RuntimeError(
-                        "Bedrock a demandé un outil, "
-                        "mais aucun appel valide n’a été reçu."
+                        "Bedrock requested a tool, but no valid "
+                        "tool call was received."
                     )
 
                 messages.append(
@@ -273,7 +488,7 @@ class BedrockService:
                 )
 
             raise RuntimeError(
-                "Nombre maximal d’appels d’outils atteint."
+                "The maximum number of tool calls was reached."
             )
 
         except ClientError as exc:
@@ -286,10 +501,10 @@ class BedrockService:
 
         except BotoCoreError as exc:
             raise RuntimeError(
-                "Impossible de communiquer avec Amazon Bedrock."
+                "Unable to communicate with Amazon Bedrock."
             ) from exc
 
         except KeyError as exc:
             raise RuntimeError(
-                f"Réponse Bedrock invalide : champ manquant {exc}."
+                f"Invalid Bedrock response: missing field {exc}."
             ) from exc
